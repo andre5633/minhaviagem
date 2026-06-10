@@ -1,0 +1,266 @@
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   TOKENS DE TEMA — Marca "Leva Meu Guia / Minha Viagem Organizada"
+   Regra do manual: fundo claro usa Sunset (#EF5244);
+   fundo escuro usa Sunny (#FEAC3A).
+   ============================================================ */
+:root {
+  --mv-radius: 18px;
+}
+
+[data-theme='light'] {
+  --mv-primary: #ef5244; /* SUNSET */
+  --mv-primary-d: #d63b2e;
+  --mv-primary-l: rgba(239, 82, 68, 0.12);
+  --mv-bg: #f6f7f9; /* PLANE */
+  --mv-surface: #ffffff;
+  --mv-surface-2: #f1f2f6;
+  --mv-border: #e8e9ef;
+  --mv-border-2: #dcdde6;
+  --mv-subtle: #f1f2f6;
+  --mv-ink: #231b37; /* VIOLET */
+  --mv-ink-2: #3d3556;
+  --mv-ink-3: #574f6e;
+  --mv-muted: #6e6783;
+  --mv-faint: #9d97ac;
+  --mv-faint-2: #c3bfce;
+  --mv-glass: rgba(246, 247, 249, 0.82);
+  --mv-toast-bg: #231b37;
+  --mv-toast-ink: #ffffff;
+  --mv-ok: #2ba66b;
+  --mv-ok-l: #ecfbf3;
+  --mv-ok-c: #c7f0dc;
+  --mv-bad: #e5484d;
+  --mv-bad-l: #fdf2f2;
+  --mv-bad-l2: #fbe5e5;
+  --mv-bad-bd: #f6cfcf;
+  --mv-accent2: #5b4a93; /* SKYFULL claro */
+  --mv-accent2-l: #efebf7;
+  --mv-stage: radial-gradient(1100px 720px at 18% -5%, #ffe7ce 0%, transparent 55%),
+    radial-gradient(900px 700px at 100% 105%, #fbd9d4 0%, transparent 52%), #ecedf2;
+  --mv-logo: url('/logo-claro.png');
+}
+
+[data-theme='dark'] {
+  --mv-primary: #feac3a; /* SUNNY */
+  --mv-primary-d: #df8e1e; /* DAYON */
+  --mv-primary-l: rgba(254, 172, 58, 0.16);
+  --mv-bg: #15101f;
+  --mv-surface: #231b37; /* VIOLET */
+  --mv-surface-2: #2c2545;
+  --mv-border: #382f52;
+  --mv-border-2: #443a64;
+  --mv-subtle: #2c2545;
+  --mv-ink: #f6f7f9; /* PLANE */
+  --mv-ink-2: #e3e1ea;
+  --mv-ink-3: #cfcbdb;
+  --mv-muted: #a8a2b8;
+  --mv-faint: #847e99;
+  --mv-faint-2: #5c5575;
+  --mv-glass: rgba(28, 21, 46, 0.8);
+  --mv-toast-bg: #0c0816;
+  --mv-toast-ink: #f6f7f9;
+  --mv-ok: #34d399;
+  --mv-ok-l: rgba(52, 211, 153, 0.14);
+  --mv-ok-c: rgba(52, 211, 153, 0.24);
+  --mv-bad: #fb7185;
+  --mv-bad-l: rgba(251, 113, 133, 0.14);
+  --mv-bad-l2: rgba(251, 113, 133, 0.22);
+  --mv-bad-bd: rgba(251, 113, 133, 0.42);
+  --mv-accent2: #b7a6e8;
+  --mv-accent2-l: rgba(120, 99, 186, 0.26);
+  --mv-stage: radial-gradient(1100px 720px at 18% -5%, #241b3c 0%, transparent 55%),
+    radial-gradient(900px 700px at 100% 105%, #1b1430 0%, transparent 52%), #100b1a;
+  --mv-logo: url('/logo-escuro.png');
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+  }
+  /* date inputs legíveis no dark */
+  [data-theme='dark'] input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+  }
+}
+
+@layer components {
+  .mv-input {
+    @apply h-[50px] w-full rounded-2xl border-[1.5px] border-line-2 bg-surface px-4 text-[15px] font-medium text-ink outline-none transition;
+  }
+  .mv-input::placeholder {
+    @apply text-faint-2;
+  }
+  .mv-input:focus {
+    border-color: var(--mv-primary);
+    box-shadow: 0 0 0 4px var(--mv-primary-l);
+  }
+  .mv-input--err {
+    border-color: var(--mv-bad);
+  }
+  .mv-label {
+    @apply mb-1.5 block pl-0.5 text-[12.5px] font-bold text-ink-3;
+  }
+  .mv-brandlogo {
+    background: var(--mv-logo) left center / contain no-repeat;
+    flex-shrink: 0;
+  }
+}
+
+/* ── keyframes / animações ── */
+@keyframes mv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes mv-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes mv-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mv-sheet-up {
+  from {
+    transform: translateY(101%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes mv-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mv-scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mv-screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mv-fab-pop {
+  from {
+    transform: scale(0) rotate(-25deg);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes mv-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--mv-pulse-c, rgba(43, 166, 107, 0.5));
+  }
+  50% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+}
+
+.mv-anim-spin {
+  animation: mv-spin 0.8s linear infinite;
+}
+.mv-anim-shimmer {
+  background: linear-gradient(100deg, var(--mv-subtle) 30%, var(--mv-surface-2) 50%, var(--mv-subtle) 70%);
+  background-size: 200% 100%;
+  animation: mv-shimmer 1.3s ease-in-out infinite;
+}
+.mv-anim-toast {
+  animation: mv-toast-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mv-anim-sheet {
+  animation: mv-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mv-overlay-panel {
+  animation: mv-sheet-up 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (min-width: 1024px) {
+  .mv-overlay-panel {
+    animation: mv-modal-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+.mv-anim-modal {
+  animation: mv-modal-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mv-anim-scrim {
+  animation: mv-scrim-in 0.26s ease;
+}
+.mv-anim-screen {
+  animation: mv-screen-in 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mv-anim-fab {
+  animation: mv-fab-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mv-pulse {
+  animation: mv-pulse 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mv-anim-spin,
+  .mv-anim-shimmer,
+  .mv-anim-toast,
+  .mv-anim-sheet,
+  .mv-anim-modal,
+  .mv-anim-scrim,
+  .mv-anim-screen,
+  .mv-anim-fab,
+  .mv-pulse {
+    animation: none !important;
+  }
+}
+
+/* scrollbars discretas */
+.mv-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.mv-scroll::-webkit-scrollbar-thumb {
+  background: var(--mv-border-2);
+  border-radius: 999px;
+}
+.mv-noscroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

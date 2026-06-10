@@ -1,0 +1,25 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+frontend/dist/
+
+# Ambiente — NUNCA commitar o .env real
+.env
+*.env.local
+
+# Prisma generated
+backend/node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

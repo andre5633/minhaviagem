@@ -1,0 +1,28 @@
+# Produção — PostgreSQL externo via DATABASE_URL, sem container de banco local
+# Uso: docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL:         ${DATABASE_URL}
+      GOOGLE_CLIENT_ID:     ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL:  ${GOOGLE_CALLBACK_URL}
+      JWT_SECRET:           ${JWT_SECRET}
+      JWT_EXPIRES_IN:       ${JWT_EXPIRES_IN:-7d}
+      FRONTEND_URL:         ${FRONTEND_URL}
+      PORT:                 4000
+      NODE_ENV:             production
+    # Porta 4000 não exposta externamente — tráfego passa pelo nginx do frontend
+    expose:
+      - "4000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
