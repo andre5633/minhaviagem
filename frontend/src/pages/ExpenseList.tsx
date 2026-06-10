@@ -10,6 +10,7 @@ import { CategoryChip } from '../components/domain/CategoryChip';
 import { Card } from '../components/ui/Card';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
+import { NoteIllustration } from '../components/ui/illustrations/NoteIllustration';
 import { Button } from '../components/ui/Button';
 import { FAB } from '../components/layout/FAB';
 import { CATEGORIES } from '../lib/categories';
@@ -186,7 +187,7 @@ export function ExpenseList() {
             icon={Search}
             title={anyFilter ? 'Nenhuma despesa encontrada' : 'Nenhuma despesa ainda'}
             body={anyFilter ? 'Ajuste a busca, o período ou a categoria.' : 'Lance sua primeira despesa para acompanhar os gastos da viagem.'}
-            illustrationTag="[ ilustração: recibos ]"
+            illustration={anyFilter ? undefined : <NoteIllustration />}
             action={
               anyFilter ? (
                 <Button variant="ghost" size="lg" leftIcon={<X size={20} />} onClick={clearFilters}>

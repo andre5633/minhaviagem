@@ -8,23 +8,29 @@ interface EmptyStateProps {
   body?: string;
   action?: ReactNode;
   illustrationTag?: string;
+  /** Ilustração customizada — substitui a caixa padrão com ícone quando presente. */
+  illustration?: ReactNode;
 }
 
-export function EmptyState({ icon: Icon = Compass, title, body, action, illustrationTag }: EmptyStateProps) {
+export function EmptyState({ icon: Icon = Compass, title, body, action, illustrationTag, illustration }: EmptyStateProps) {
   return (
     <div className="mx-auto mt-6 flex max-w-sm flex-col items-center px-6 py-8 text-center">
-      <div
-        className="relative mb-[18px] flex h-[132px] w-[132px] flex-col items-center justify-center rounded-[32px]"
-        style={{
-          background:
-            'repeating-linear-gradient(45deg, var(--mv-primary-l), var(--mv-primary-l) 11px, transparent 11px, transparent 22px)',
-        }}
-      >
-        <Icon size={44} className="text-primary" strokeWidth={1.8} />
-        {illustrationTag && (
-          <span className="absolute bottom-2.5 font-mono text-[9.5px] text-primary/70">{illustrationTag}</span>
-        )}
-      </div>
+      {illustration ? (
+        <div className="mb-[18px]">{illustration}</div>
+      ) : (
+        <div
+          className="relative mb-[18px] flex h-[132px] w-[132px] flex-col items-center justify-center rounded-[32px]"
+          style={{
+            background:
+              'repeating-linear-gradient(45deg, var(--mv-primary-l), var(--mv-primary-l) 11px, transparent 11px, transparent 22px)',
+          }}
+        >
+          <Icon size={44} className="text-primary" strokeWidth={1.8} />
+          {illustrationTag && (
+            <span className="absolute bottom-2.5 font-mono text-[9.5px] text-primary/70">{illustrationTag}</span>
+          )}
+        </div>
+      )}
       <h3 className="mb-1.5 text-lg font-extrabold tracking-tight text-ink">{title}</h3>
       {body && <p className="mb-[22px] text-sm leading-relaxed text-muted">{body}</p>}
       {action}

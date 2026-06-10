@@ -8,6 +8,7 @@ import { Card } from '../components/ui/Card';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyState } from '../components/ui/EmptyState';
+import { MapIllustration } from '../components/ui/illustrations/MapIllustration';
 import { Button } from '../components/ui/Button';
 import { FAB } from '../components/layout/FAB';
 
@@ -58,7 +59,7 @@ export function TripList() {
         <EmptyState
           title="Nenhuma viagem ainda"
           body="Crie sua primeira viagem para começar a controlar o orçamento e os gastos."
-          illustrationTag="[ ilustração: mapa ]"
+          illustration={<MapIllustration />}
           action={
             <Button variant="primary" size="lg" leftIcon={<Plus size={20} />} onClick={() => navigate('/trips/new')}>
               Criar minha primeira viagem

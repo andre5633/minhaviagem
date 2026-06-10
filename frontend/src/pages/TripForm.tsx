@@ -59,28 +59,31 @@ export function TripForm() {
     if (step1Valid) setStep(2);
   };
 
-  const confirm = () => {
+  const confirm = async () => {
     setSaving(true);
-    setTimeout(() => {
-      const payload = {
-        title: form.title.trim(),
-        destination: form.destination.trim(),
-        startDate: form.startDate,
-        endDate: form.endDate,
-        totalBudget: budget,
-        cover: form.cover,
-        coverImage: form.coverImage,
-      };
+    const payload = {
+      title: form.title.trim(),
+      destination: form.destination.trim(),
+      startDate: form.startDate,
+      endDate: form.endDate,
+      totalBudget: budget,
+      cover: form.cover,
+      coverImage: form.coverImage,
+    };
+    try {
       if (editing) {
-        updateTrip(editing.id, payload);
+        await updateTrip(editing.id, payload);
         toast('Viagem atualizada');
         navigate(`/trips/${editing.id}`);
       } else {
-        const t = createTrip(payload);
+        const t = await createTrip(payload);
         toast('Viagem criada!');
         navigate(`/trips/${t.id}`);
       }
-    }, 800);
+    } catch (err) {
+      setSaving(false);
+      toast(err instanceof Error ? err.message : 'Erro ao salvar viagem', 'error');
+    }
   };
 
   const field = (label: string, key: keyof Errors, node: ReactNode) => (

@@ -1,0 +1,25 @@
+# Override de deploy nesta VPS (compartilhada).
+# Uso: docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml --env-file .env up -d --build
+#
+# Por quê:
+#  - A porta 80 do host é do nginx do host (reverse proxy de todos os sites).
+#    Então o frontend publica em 3007 e o nginx do host faz proxy do domínio.
+#  - O backend precisa alcançar o postgres compartilhado, que vive na rede
+#    docker externa "backend" (mesma usada pelo berith). DATABASE_URL usa host "postgres".
+
+services:
+  backend:
+    networks:
+      - default      # fala com o frontend (rede interna do compose)
+      - shared_pg    # fala com o postgres compartilhado
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    ports: !override
+      - "3007:80"
+
+networks:
+  shared_pg:
+    external: true
+    name: backend

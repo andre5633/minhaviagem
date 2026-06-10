@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Trip, Expense, User, Theme, Toast, TripInput, ExpenseInput } from '../types';
-import { MOCK_USER, MOCK_TRIPS, MOCK_EXPENSES } from '../data/mockData';
-import { uid } from '../lib/summary';
+import { api, ApiError } from '../lib/api';
 
 export interface ExpenseSheetState {
   open: boolean;
@@ -14,17 +13,18 @@ interface AppContextValue {
   // auth
   user: User;
   isAuthed: boolean;
+  authLoading: boolean;
   login: () => void;
   logout: () => void;
   // dados
   trips: Trip[];
   expenses: Expense[];
-  createTrip: (data: TripInput) => Trip;
-  updateTrip: (id: string, data: Partial<TripInput>) => void;
-  deleteTrip: (id: string) => void;
-  addExpense: (data: ExpenseInput) => void;
-  updateExpense: (id: string, data: Partial<ExpenseInput>) => void;
-  deleteExpense: (id: string) => void;
+  createTrip: (data: TripInput) => Promise<Trip>;
+  updateTrip: (id: string, data: Partial<TripInput>) => Promise<void>;
+  deleteTrip: (id: string) => Promise<void>;
+  addExpense: (data: ExpenseInput) => Promise<void>;
+  updateExpense: (id: string, data: Partial<ExpenseInput>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
   // tema
   theme: Theme;
   setTheme: (t: Theme) => void;
@@ -41,6 +41,10 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+// Usuário "vazio" enquanto a sessão carrega. As telas que mostram o usuário
+// ficam atrás do ProtectedRoute, então só renderizam com o usuário real carregado.
+const BLANK_USER: User = { id: '', name: '', email: '', avatarUrl: '' };
+
 function readTheme(): Theme {
   if (typeof document !== 'undefined') {
     const t = document.documentElement.getAttribute('data-theme');
@@ -50,9 +54,11 @@ function readTheme(): Theme {
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User>(BLANK_USER);
   const [isAuthed, setIsAuthed] = useState(false);
-  const [trips, setTrips] = useState<Trip[]>(MOCK_TRIPS);
-  const [expenses, setExpenses] = useState<Expense[]>(MOCK_EXPENSES);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [theme, setThemeState] = useState<Theme>(readTheme);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [sheet, setSheet] = useState<ExpenseSheetState>({
@@ -72,51 +78,96 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
-  const toggleTheme = useCallback(() => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')), []);
-
-  const login = useCallback(() => setIsAuthed(true), []);
-  const logout = useCallback(() => setIsAuthed(false), []);
-
-  const createTrip = useCallback((data: TripInput): Trip => {
-    const trip: Trip = { id: uid('t'), userId: MOCK_USER.id, ...data };
-    setTrips((prev) => [...prev, trip]);
-    return trip;
-  }, []);
-
-  const updateTrip = useCallback((id: string, data: Partial<TripInput>) => {
-    setTrips((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
-  }, []);
-
-  const deleteTrip = useCallback((id: string) => {
-    setTrips((prev) => prev.filter((t) => t.id !== id));
-    setExpenses((prev) => prev.filter((e) => e.tripId !== id));
-  }, []);
-
-  const addExpense = useCallback((data: ExpenseInput) => {
-    setExpenses((prev) => [...prev, { id: uid('e'), ...data }]);
-  }, []);
-
-  const updateExpense = useCallback((id: string, data: Partial<ExpenseInput>) => {
-    setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, ...data } : e)));
-  }, []);
-
-  const deleteExpense = useCallback((id: string) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
-  }, []);
-
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const toast = useCallback(
     (message: string, type: Toast['type'] = 'success') => {
-      const id = uid('toast');
+      const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       setToasts((prev) => [...prev, { id, message, type }]);
       setTimeout(() => dismissToast(id), 2600);
     },
     [dismissToast],
   );
+
+  // Carrega viagens + despesas de todas elas
+  const loadData = useCallback(async () => {
+    const list = await api.listTrips();
+    setTrips(list);
+    const expLists = await Promise.all(list.map((t) => api.listExpenses(t.id)));
+    setExpenses(expLists.flat());
+  }, []);
+
+  // Verifica a sessão no boot
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await api.me();
+        setUser(me);
+        setIsAuthed(true);
+        await loadData();
+      } catch {
+        setIsAuthed(false);
+      } finally {
+        setAuthLoading(false);
+      }
+    })();
+  }, [loadData]);
+
+  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
+  const toggleTheme = useCallback(() => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')), []);
+
+  const login = useCallback(() => {
+    // Fluxo OAuth do servidor — sai da SPA e volta autenticado em /trips
+    window.location.href = '/auth/google';
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await api.logout();
+    } catch {
+      /* ignora — limpamos o estado de qualquer forma */
+    }
+    setIsAuthed(false);
+    setUser(BLANK_USER);
+    setTrips([]);
+    setExpenses([]);
+    window.location.href = '/login';
+  }, []);
+
+  const createTrip = useCallback(async (data: TripInput): Promise<Trip> => {
+    const trip = await api.createTrip(data);
+    setTrips((prev) => [trip, ...prev]);
+    return trip;
+  }, []);
+
+  const updateTrip = useCallback(async (id: string, data: Partial<TripInput>) => {
+    const trip = await api.updateTrip(id, data);
+    setTrips((prev) => prev.map((t) => (t.id === id ? trip : t)));
+  }, []);
+
+  const deleteTrip = useCallback(async (id: string) => {
+    await api.deleteTrip(id);
+    setTrips((prev) => prev.filter((t) => t.id !== id));
+    setExpenses((prev) => prev.filter((e) => e.tripId !== id));
+  }, []);
+
+  const addExpense = useCallback(async (data: ExpenseInput) => {
+    const { tripId, ...rest } = data;
+    const expense = await api.addExpense(tripId, rest);
+    setExpenses((prev) => [expense, ...prev]);
+  }, []);
+
+  const updateExpense = useCallback(async (id: string, data: Partial<ExpenseInput>) => {
+    const expense = await api.updateExpense(id, data);
+    setExpenses((prev) => prev.map((e) => (e.id === id ? expense : e)));
+  }, []);
+
+  const deleteExpense = useCallback(async (id: string) => {
+    await api.deleteExpense(id);
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  }, []);
 
   const openExpenseSheet = useCallback(
     (opts: { mode?: 'add' | 'edit'; tripId: string; expense?: Expense | null }) => {
@@ -127,8 +178,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const closeExpenseSheet = useCallback(() => setSheet((s) => ({ ...s, open: false })), []);
 
   const value: AppContextValue = {
-    user: MOCK_USER,
+    user,
     isAuthed,
+    authLoading,
     login,
     logout,
     trips,
@@ -158,3 +210,6 @@ export function useApp(): AppContextValue {
   if (!ctx) throw new Error('useApp deve ser usado dentro de <AppProvider>');
   return ctx;
 }
+
+// re-export para handlers que queiram tratar erros de API
+export { ApiError };

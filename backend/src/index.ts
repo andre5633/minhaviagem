@@ -24,8 +24,9 @@ app.use(passport.initialize());
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 app.use('/auth', authRouter);
-app.use('/trips', tripsRouter);
-app.use('/expenses', expensesRouter);
+// API sob /api para não colidir com as rotas de página da SPA (/trips, /trips/:id, ...)
+app.use('/api/trips', tripsRouter);
+app.use('/api/expenses', expensesRouter);
 
 // Erro global
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

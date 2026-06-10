@@ -41,27 +41,30 @@ export function ExpenseForm(_props: ExpenseFormProps = {}) {
   const amount = currencyToNumber(amountStr);
   const valid = description.trim() !== '' && amount > 0;
 
-  const confirm = () => {
+  const confirm = async () => {
     setTries((t) => t + 1);
     if (!valid || !sheet.tripId) return;
     setSaving(true);
-    setTimeout(() => {
-      const payload = {
-        category,
-        description: description.trim(),
-        amount,
-        expenseDate: date,
-        tripId: sheet.tripId as string,
-      };
+    const payload = {
+      category,
+      description: description.trim(),
+      amount,
+      expenseDate: date,
+      tripId: sheet.tripId as string,
+    };
+    try {
       if (editing) {
-        updateExpense(editing.id, payload);
+        await updateExpense(editing.id, payload);
         toast('Despesa atualizada');
       } else {
-        addExpense(payload);
+        await addExpense(payload);
         toast('Despesa lançada!');
       }
       closeExpenseSheet();
-    }, 550);
+    } catch (err) {
+      setSaving(false);
+      toast(err instanceof Error ? err.message : 'Erro ao salvar despesa', 'error');
+    }
   };
 
   return (

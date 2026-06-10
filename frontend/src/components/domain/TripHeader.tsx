@@ -63,7 +63,7 @@ export function TripHeader({ trip, summary, current }: TripHeaderProps) {
           >
             <button
               onClick={() => navigate('/trips')}
-              className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-white/90 py-1.5 pl-2 pr-3 text-[13px] font-bold text-ink-2 backdrop-blur transition hover:bg-white"
+              className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-white/90 py-1.5 pl-2 pr-3 text-[13px] font-bold text-[#3d3556] backdrop-blur transition hover:bg-white"
             >
               <ChevronLeft size={16} />
               Viagens
