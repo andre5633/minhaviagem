@@ -13,6 +13,8 @@ services:
       JWT_SECRET:           ${JWT_SECRET}
       JWT_EXPIRES_IN:       ${JWT_EXPIRES_IN:-7d}
       FRONTEND_URL:         ${FRONTEND_URL}
+      AWESOMEAPI_TOKEN:     ${AWESOMEAPI_TOKEN:-}
+      ADMIN_PASSWORD:       ${ADMIN_PASSWORD:-}
       PORT:                 4000
       NODE_ENV:             production
     # Porta 4000 não exposta externamente — tráfego passa pelo nginx do frontend

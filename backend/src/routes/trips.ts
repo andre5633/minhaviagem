@@ -2,6 +2,8 @@ import { Router } from 'express';
 import type { Trip, Expense } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { requireAuth } from '../middleware/requireAuth';
+import { serializeChecklist } from './checklists';
+import { copyGlobalsToTrip } from './globalChecklists';
 
 export const tripsRouter = Router();
 tripsRouter.use(requireAuth);
@@ -130,4 +132,55 @@ tripsRouter.post('/:id/expenses', async (req, res) => {
     },
   });
   res.status(201).json(serializeExpense(expense));
+});
+
+// Checklists da viagem
+tripsRouter.get('/:id/checklists', async (req, res) => {
+  const trip = await prisma.trip.findFirst({
+    where: { id: req.params.id, userId: req.user!.id },
+  });
+  if (!trip) {
+    res.status(404).json({ error: 'Viagem não encontrada' });
+    return;
+  }
+  // Lazy: na 1ª vez, copia as listas globais habilitadas do usuário para a viagem
+  const count = await prisma.checklist.count({ where: { tripId: req.params.id } });
+  if (count === 0) {
+    await copyGlobalsToTrip(req.user!.id, req.params.id);
+  }
+  const checklists = await prisma.checklist.findMany({
+    where: { tripId: req.params.id },
+    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    include: { tasks: { orderBy: { position: 'asc' } } },
+  });
+  res.json(checklists.map(serializeChecklist));
+});
+
+tripsRouter.post('/:id/checklists', async (req, res) => {
+  const trip = await prisma.trip.findFirst({
+    where: { id: req.params.id, userId: req.user!.id },
+  });
+  if (!trip) {
+    res.status(404).json({ error: 'Viagem não encontrada' });
+    return;
+  }
+  const { title } = req.body;
+  if (!title || typeof title !== 'string' || !title.trim()) {
+    res.status(400).json({ error: 'Nome do checklist é obrigatório' });
+    return;
+  }
+  const max = await prisma.checklist.aggregate({
+    where: { tripId: req.params.id },
+    _max: { position: true },
+  });
+  const checklist = await prisma.checklist.create({
+    data: {
+      tripId: req.params.id,
+      title: title.trim(),
+      isDefault: false,
+      position: (max._max.position ?? -1) + 1,
+    },
+    include: { tasks: true },
+  });
+  res.status(201).json(serializeChecklist(checklist));
 });

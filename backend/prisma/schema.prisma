@@ -14,7 +14,10 @@ model User {
   email     String   @unique
   avatarUrl String?  @map("avatar_url")
   createdAt DateTime @default(now()) @map("created_at")
+  lastLoginAt DateTime? @map("last_login_at")
   trips     Trip[]
+  globalChecklists GlobalChecklist[]
+  categories Category[]
 
   @@map("users")
 }
@@ -31,8 +34,9 @@ model Trip {
   coverImage  String?   @map("cover_image")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   expenses    Expense[]
+  checklists  Checklist[]
 
   @@map("trips")
 }
@@ -49,4 +53,94 @@ model Expense {
   trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
   @@map("expenses")
+}
+
+model Checklist {
+  id        String          @id @default(uuid())
+  tripId    String          @map("trip_id")
+  title     String
+  isDefault Boolean         @default(false) @map("is_default")
+  hidden    Boolean         @default(false)
+  position  Int             @default(0)
+  createdAt DateTime        @default(now()) @map("created_at")
+  trip      Trip            @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tasks     ChecklistTask[]
+
+  @@index([tripId])
+  @@map("checklists")
+}
+
+model ChecklistTask {
+  id          String    @id @default(uuid())
+  checklistId String    @map("checklist_id")
+  text        String
+  responsible String?
+  done        Boolean   @default(false)
+  isDefault   Boolean   @default(false) @map("is_default")
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+  @@map("checklist_tasks")
+}
+
+// Modelos globais (por usuário) — editados em Perfil > Meu Checklist.
+// Toda nova viagem nasce com uma CÓPIA das listas globais habilitadas (enabled).
+model GlobalChecklist {
+  id        String                @id @default(uuid())
+  userId    String                @map("user_id")
+  title     String
+  isDefault Boolean               @default(false) @map("is_default")
+  enabled   Boolean               @default(true)
+  position  Int                   @default(0)
+  createdAt DateTime              @default(now()) @map("created_at")
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     GlobalChecklistItem[]
+
+  @@index([userId])
+  @@map("global_checklists")
+}
+
+model GlobalChecklistItem {
+  id          String          @id @default(uuid())
+  checklistId String          @map("global_checklist_id")
+  text        String
+  responsible String?
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  checklist   GlobalChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+  @@map("global_checklist_items")
+}
+
+// Categorias de despesa (por usuário). "key" é estável (referência das despesas);
+// nome/ícone/cor são editáveis em Perfil > Minhas Categorias.
+model Category {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  key       String
+  name      String
+  icon      String
+  color     String
+  isDefault Boolean  @default(false) @map("is_default")
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+  @@map("categories")
+}
+
+// Cache global das cotações (atualizado a partir de API externa).
+model CurrencyRate {
+  code      String   @id // USD, EUR, GBP, JPY, CHF
+  name      String
+  rate      Decimal  @db.Decimal(14, 4) // R$ por 1 unidade
+  pctChange String?  @map("pct_change")
+  fetchedAt DateTime @map("fetched_at")
+
+  @@map("currency_rates")
 }

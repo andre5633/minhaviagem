@@ -1,6 +1,12 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import type { Trip, Expense, User, Theme, Toast, TripInput, ExpenseInput } from '../types';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import type { LucideIcon } from 'lucide-react';
+import type { Trip, Expense, User, Theme, Toast, TripInput, ExpenseInput, Category } from '../types';
 import { api, ApiError } from '../lib/api';
+import { resolveIcon } from '../lib/categoryIcons';
+
+export interface ResolvedCategory extends Category {
+  Icon: LucideIcon;
+}
 
 export interface ExpenseSheetState {
   open: boolean;
@@ -25,6 +31,12 @@ interface AppContextValue {
   addExpense: (data: ExpenseInput) => Promise<void>;
   updateExpense: (id: string, data: Partial<ExpenseInput>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
+  // categorias
+  categories: Category[];
+  categoryMap: Record<string, ResolvedCategory>;
+  createCategory: (data: { name: string; icon: string; color: string }) => Promise<Category>;
+  updateCategory: (id: string, data: { name?: string; icon?: string; color?: string }) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
   // tema
   theme: Theme;
   setTheme: (t: Theme) => void;
@@ -59,6 +71,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [authLoading, setAuthLoading] = useState(true);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [theme, setThemeState] = useState<Theme>(readTheme);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [sheet, setSheet] = useState<ExpenseSheetState>({
@@ -91,13 +104,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [dismissToast],
   );
 
-  // Carrega viagens + despesas de todas elas
+  // Carrega categorias + viagens + despesas de todas elas
   const loadData = useCallback(async () => {
-    const list = await api.listTrips();
+    const [list, cats] = await Promise.all([api.listTrips(), api.listCategories()]);
     setTrips(list);
+    setCategories(cats);
     const expLists = await Promise.all(list.map((t) => api.listExpenses(t.id)));
     setExpenses(expLists.flat());
   }, []);
+
+  const categoryMap = useMemo(() => {
+    const m: Record<string, ResolvedCategory> = {};
+    categories.forEach((c) => {
+      m[c.key] = { ...c, Icon: resolveIcon(c.icon) };
+    });
+    return m;
+  }, [categories]);
 
   // Verifica a sessão no boot
   useEffect(() => {
@@ -133,6 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(BLANK_USER);
     setTrips([]);
     setExpenses([]);
+    setCategories([]);
     window.location.href = '/login';
   }, []);
 
@@ -169,6 +192,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
+  const createCategory = useCallback(async (data: { name: string; icon: string; color: string }) => {
+    const c = await api.createCategory(data);
+    setCategories((prev) => [...prev, c]);
+    return c;
+  }, []);
+
+  const updateCategory = useCallback(
+    async (id: string, data: { name?: string; icon?: string; color?: string }) => {
+      const c = await api.updateCategory(id, data);
+      setCategories((prev) => prev.map((x) => (x.id === id ? c : x)));
+    },
+    [],
+  );
+
+  const deleteCategory = useCallback(async (id: string) => {
+    await api.deleteCategory(id);
+    setCategories((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
   const openExpenseSheet = useCallback(
     (opts: { mode?: 'add' | 'edit'; tripId: string; expense?: Expense | null }) => {
       setSheet({ open: true, mode: opts.mode ?? 'add', tripId: opts.tripId, expense: opts.expense ?? null });
@@ -191,6 +233,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addExpense,
     updateExpense,
     deleteExpense,
+    categories,
+    categoryMap,
+    createCategory,
+    updateCategory,
+    deleteCategory,
     theme,
     setTheme,
     toggleTheme,

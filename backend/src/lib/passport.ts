@@ -17,17 +17,20 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
+          const now = new Date();
           const user = await prisma.user.upsert({
             where: { googleId: profile.id },
             update: {
               name: profile.displayName,
               avatarUrl: profile.photos?.[0]?.value ?? null,
+              lastLoginAt: now,
             },
             create: {
               googleId: profile.id,
               name: profile.displayName,
               email: profile.emails?.[0]?.value ?? '',
               avatarUrl: profile.photos?.[0]?.value ?? null,
+              lastLoginAt: now,
             },
           });
           done(null, user);

@@ -7,9 +7,15 @@ import passport from 'passport';
 import { authRouter } from './routes/auth';
 import { tripsRouter } from './routes/trips';
 import { expensesRouter } from './routes/expenses';
+import { checklistsRouter, tasksRouter } from './routes/checklists';
+import { globalChecklistsRouter, globalItemsRouter } from './routes/globalChecklists';
+import { categoriesRouter } from './routes/categories';
+import { ratesRouter } from './routes/rates';
+import { adminRouter } from './routes/admin';
 import './lib/passport'; // registra a estratégia Google
 
 const app = express();
+app.set('trust proxy', true); // atrás do nginx — req.ip reflete o cliente (rate limit do admin)
 
 app.use(helmet());
 app.use(
@@ -27,6 +33,13 @@ app.use('/auth', authRouter);
 // API sob /api para não colidir com as rotas de página da SPA (/trips, /trips/:id, ...)
 app.use('/api/trips', tripsRouter);
 app.use('/api/expenses', expensesRouter);
+app.use('/api/checklists', checklistsRouter);
+app.use('/api/tasks', tasksRouter);
+app.use('/api/global-checklists', globalChecklistsRouter);
+app.use('/api/global-items', globalItemsRouter);
+app.use('/api/categories', categoriesRouter);
+app.use('/api/rates', ratesRouter);
+app.use('/api/admin', adminRouter);
 
 // Erro global
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

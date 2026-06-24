@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, MapPin, Calendar, Home, Receipt, Pencil, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, MapPin, Calendar, Home, Receipt, ListChecks, Pencil, Plus } from 'lucide-react';
 import { TripCover } from './TripCover';
 import { Button } from '../ui/Button';
 import { formatRange } from '../../lib/formatters';
@@ -16,7 +16,7 @@ const STATUS = {
 interface TripHeaderProps {
   trip: Trip;
   summary: TripSummary;
-  current: 'dashboard' | 'expenses';
+  current: 'dashboard' | 'expenses' | 'checklist';
 }
 
 export function TripHeader({ trip, summary, current }: TripHeaderProps) {
@@ -98,6 +98,12 @@ export function TripHeader({ trip, summary, current }: TripHeaderProps) {
             Icon={Receipt}
             label="Despesas"
             onClick={() => navigate(`/trips/${trip.id}/expenses`)}
+          />
+          <Tab
+            active={current === 'checklist'}
+            Icon={ListChecks}
+            label="Checklist"
+            onClick={() => navigate(`/trips/${trip.id}/checklist`)}
           />
           <div className="flex-1" />
           <Button variant="ghost" size="md" leftIcon={<Pencil size={18} />} onClick={() => navigate(`/trips/${trip.id}/edit`)}>

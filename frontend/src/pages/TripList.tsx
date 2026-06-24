@@ -10,15 +10,19 @@ import { Avatar } from '../components/ui/Avatar';
 import { EmptyState } from '../components/ui/EmptyState';
 import { MapIllustration } from '../components/ui/illustrations/MapIllustration';
 import { Button } from '../components/ui/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { FAB } from '../components/layout/FAB';
+import type { Trip } from '../types';
 
 const ORDER: Record<string, number> = { active: 0, upcoming: 1, past: 2 };
 
 export function TripList() {
-  const { trips, summaries } = useTrips();
-  const { user } = useApp();
+  const { trips, summaries, deleteTrip } = useTrips();
+  const { user, toast } = useApp();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [toDelete, setToDelete] = useState<Trip | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setLoading(false), 600);
@@ -26,6 +30,20 @@ export function TripList() {
   }, []);
 
   const sorted = [...trips].sort((a, b) => ORDER[summaries[a.id].status] - ORDER[summaries[b.id].status]);
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await deleteTrip(toDelete.id);
+      toast('Viagem excluída', 'delete');
+      setToDelete(null);
+    } catch {
+      toast('Erro ao excluir viagem', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1040px] px-5 pb-28 pt-12 lg:px-10 lg:pb-12 lg:pt-8">
@@ -74,10 +92,26 @@ export function TripList() {
               trip={trip}
               summary={summaries[trip.id]}
               onClick={() => navigate(`/trips/${trip.id}`)}
+              onDelete={() => setToDelete(trip)}
             />
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Excluir viagem?"
+        body={
+          toDelete
+            ? `“${toDelete.title}” será removida com todas as despesas e checklists. Esta ação não pode ser desfeita.`
+            : ''
+        }
+        confirmLabel="Excluir viagem"
+        danger
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setToDelete(null)}
+      />
 
       <FAB
         className="bottom-6 right-5 lg:hidden"

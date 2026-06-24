@@ -1,5 +1,4 @@
-import type { Trip, Expense, TripSummary, TripStatus, CategorySpend, DaySpend } from '../types';
-import { CATEGORIES } from './categories';
+import type { Trip, Expense, TripSummary, TripStatus, CategorySpend, DaySpend, Category } from '../types';
 import { parseDate, today, daysBetween, toISO } from './formatters';
 
 export function tripStatus(trip: Trip, ref: Date = today()): TripStatus {
@@ -23,7 +22,7 @@ export function daysRemaining(trip: Trip, ref: Date = today()): number {
 }
 
 /** Equivalente a GET /trips/:id/summary, calculado no cliente */
-export function computeSummary(trip: Trip, expenses: Expense[]): TripSummary {
+export function computeSummary(trip: Trip, expenses: Expense[], categories: Category[] = []): TripSummary {
   const ref = today();
   const tripExp = expenses.filter((e) => e.tripId === trip.id);
 
@@ -46,8 +45,17 @@ export function computeSummary(trip: Trip, expenses: Expense[]): TripSummary {
   tripExp.forEach((e) => {
     byCat[e.category] = (byCat[e.category] || 0) + e.amount;
   });
-  const spendingByCategory: CategorySpend[] = CATEGORIES.filter((c) => byCat[c.key])
-    .map((c) => ({ category: c.key, amount: byCat[c.key] as number, color: c.color }))
+  const defByKey = new Map(categories.map((c) => [c.key, c]));
+  const spendingByCategory: CategorySpend[] = Object.entries(byCat)
+    .map(([key, amount]) => {
+      const def = defByKey.get(key);
+      return {
+        category: key,
+        name: def?.name ?? key,
+        amount: amount as number,
+        color: def?.color ?? '#8B8598',
+      };
+    })
     .sort((a, b) => b.amount - a.amount);
 
   // por dia (cada dia da viagem)

@@ -1,0 +1,59 @@
+# Deploy AUTOSSUFICIENTE — sobe Postgres + backend + frontend num servidor novo.
+# Tudo é criado no deploy:
+#   • as tabelas → migrations rodam no boot do backend (prisma migrate deploy)
+#   • os dados padrão (categorias, checklists globais, cotações) → semeados
+#     sob demanda no primeiro acesso de cada usuário.
+#
+# Uso:
+#   cp .env.example .env   # preencher; DATABASE_URL deve apontar para @db:5432
+#   docker compose -f docker-compose.full.yml --env-file .env up -d --build
+#
+# O nginx do host faz proxy do(s) domínio(s) → http://localhost:${WEB_PORT}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL:         ${DATABASE_URL}
+      GOOGLE_CLIENT_ID:     ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL:  ${GOOGLE_CALLBACK_URL}
+      JWT_SECRET:           ${JWT_SECRET}
+      JWT_EXPIRES_IN:       ${JWT_EXPIRES_IN:-7d}
+      FRONTEND_URL:         ${FRONTEND_URL}
+      AWESOMEAPI_TOKEN:     ${AWESOMEAPI_TOKEN:-}
+      ADMIN_PASSWORD:       ${ADMIN_PASSWORD:-}
+      PORT:                 4000
+      NODE_ENV:             production
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - '4000'
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - '${WEB_PORT:-8080}:80'
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

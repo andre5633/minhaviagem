@@ -3,7 +3,20 @@
 // /auth /trips /expenses /health → backend:4000), então usamos caminhos
 // relativos + cookies (credentials: 'include') para a sessão JWT.
 
-import type { Trip, Expense, TripInput, ExpenseInput, User } from '../types';
+import type {
+  Trip,
+  Expense,
+  TripInput,
+  ExpenseInput,
+  User,
+  Checklist,
+  ChecklistTask,
+  GlobalChecklist,
+  GlobalChecklistItem,
+  Category,
+  CurrencyRate,
+  AdminUsersResponse,
+} from '../types';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -53,4 +66,58 @@ export const api = {
   updateExpense: (id: string, data: Partial<ExpenseInput>) =>
     req<Expense>('PUT', `/api/expenses/${id}`, data),
   deleteExpense: (id: string) => req<void>('DELETE', `/api/expenses/${id}`),
+
+  // ── checklists ──
+  listChecklists: (tripId: string) => req<Checklist[]>('GET', `/api/trips/${tripId}/checklists`),
+  createChecklist: (tripId: string, title: string) =>
+    req<Checklist>('POST', `/api/trips/${tripId}/checklists`, { title }),
+  updateChecklist: (id: string, data: { title?: string; hidden?: boolean }) =>
+    req<Checklist>('PUT', `/api/checklists/${id}`, data),
+  deleteChecklist: (id: string) => req<void>('DELETE', `/api/checklists/${id}`),
+
+  // ── checklist tasks ──
+  addTask: (checklistId: string, data: { text: string; responsible?: string | null }) =>
+    req<ChecklistTask>('POST', `/api/checklists/${checklistId}/tasks`, data),
+  updateTask: (id: string, data: { text?: string; responsible?: string | null; done?: boolean }) =>
+    req<ChecklistTask>('PUT', `/api/tasks/${id}`, data),
+  deleteTask: (id: string) => req<void>('DELETE', `/api/tasks/${id}`),
+
+  // ── global checklists (modelos do usuário — Perfil > Meu Checklist) ──
+  listGlobalChecklists: () => req<GlobalChecklist[]>('GET', '/api/global-checklists'),
+  createGlobalChecklist: (title: string) =>
+    req<GlobalChecklist>('POST', '/api/global-checklists', { title }),
+  updateGlobalChecklist: (id: string, data: { title?: string; enabled?: boolean }) =>
+    req<GlobalChecklist>('PUT', `/api/global-checklists/${id}`, data),
+  deleteGlobalChecklist: (id: string) => req<void>('DELETE', `/api/global-checklists/${id}`),
+  addGlobalItem: (checklistId: string, data: { text: string; responsible?: string | null }) =>
+    req<GlobalChecklistItem>('POST', `/api/global-checklists/${checklistId}/items`, data),
+  updateGlobalItem: (id: string, data: { text?: string; responsible?: string | null }) =>
+    req<GlobalChecklistItem>('PUT', `/api/global-items/${id}`, data),
+  deleteGlobalItem: (id: string) => req<void>('DELETE', `/api/global-items/${id}`),
+
+  // ── categorias (Perfil > Minhas Categorias) ──
+  listCategories: () => req<Category[]>('GET', '/api/categories'),
+  createCategory: (data: { name: string; icon: string; color: string }) =>
+    req<Category>('POST', '/api/categories', data),
+  updateCategory: (id: string, data: { name?: string; icon?: string; color?: string }) =>
+    req<Category>('PUT', `/api/categories/${id}`, data),
+  deleteCategory: (id: string) => req<void>('DELETE', `/api/categories/${id}`),
+
+  // ── cotações ──
+  getRates: () => req<CurrencyRate[]>('GET', '/api/rates'),
+
+  // ── admin ──
+  adminLogin: (password: string) => req<{ ok: boolean }>('POST', '/api/admin/login', { password }),
+  adminMe: () => req<{ ok: boolean }>('GET', '/api/admin/me'),
+  adminLogout: () => req<{ ok: boolean }>('POST', '/api/admin/logout'),
+  adminUsers: (params: { page: number; pageSize: number; q: string; sort: string; order: string }) => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      q: params.q,
+      sort: params.sort,
+      order: params.order,
+    }).toString();
+    return req<AdminUsersResponse>('GET', `/api/admin/users?${qs}`);
+  },
 };

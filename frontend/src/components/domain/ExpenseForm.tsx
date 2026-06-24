@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react';
 import { Check, Info } from 'lucide-react';
-import { CATEGORIES } from '../../lib/categories';
 import { CategoryChip } from './CategoryChip';
 import { Button } from '../ui/Button';
 import { useApp } from '../../store/AppContext';
 import { currencyToNumber, numberToCurrencyInput, todayISO } from '../../lib/formatters';
-import type { CategoryKey } from '../../types';
 
 interface ExpenseFormProps {
   onDone?: () => void;
 }
 
 export function ExpenseForm(_props: ExpenseFormProps = {}) {
-  const { sheet, addExpense, updateExpense, closeExpenseSheet, toast } = useApp();
+  const { sheet, addExpense, updateExpense, closeExpenseSheet, toast, categories } = useApp();
   const editing = sheet.mode === 'edit' ? sheet.expense : null;
 
-  const [category, setCategory] = useState<CategoryKey>('Alimentação');
+  const [category, setCategory] = useState<string>('');
   const [description, setDescription] = useState('');
   const [amountStr, setAmountStr] = useState('');
   const [date, setDate] = useState(todayISO());
@@ -29,7 +27,7 @@ export function ExpenseForm(_props: ExpenseFormProps = {}) {
       setAmountStr(numberToCurrencyInput(editing.amount));
       setDate(editing.expenseDate);
     } else {
-      setCategory('Alimentação');
+      setCategory(categories[0]?.key ?? '');
       setDescription('');
       setAmountStr('');
       setDate(todayISO());
@@ -71,7 +69,7 @@ export function ExpenseForm(_props: ExpenseFormProps = {}) {
     <div>
       <label className="mv-label">Categoria</label>
       <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <CategoryChip
             key={c.key}
             category={c.key}

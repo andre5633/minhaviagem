@@ -1,23 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Coins, Wallet, TrendingUp, Clock, Compass, Calendar, Plus } from 'lucide-react';
+import { Coins, Wallet, Clock, Compass, Plus } from 'lucide-react';
 import { useTrip } from '../hooks/useTrips';
 import { useApp } from '../store/AppContext';
 import { TripHeader } from '../components/domain/TripHeader';
 import { MetricCard } from '../components/domain/MetricCard';
 import { BudgetProgress } from '../components/domain/BudgetProgress';
 import { CategoryDonut } from '../components/charts/CategoryDonut';
-import { DailyBars } from '../components/charts/DailyBars';
+import { CurrencyWidget } from '../components/domain/CurrencyWidget';
 import { Card } from '../components/ui/Card';
 import { Skeleton } from '../components/ui/Skeleton';
 import { FAB } from '../components/layout/FAB';
-import { CATEGORY_MAP } from '../lib/categories';
 import { formatBRL, formatBRLShort } from '../lib/formatters';
 
 export function TripDashboard() {
   const { id } = useParams();
   const { trip, summary } = useTrip(id);
-  const { openExpenseSheet } = useApp();
+  const { openExpenseSheet, categoryMap } = useApp();
   const [loading, setLoading] = useState(true);
   const [activeSlice, setActiveSlice] = useState<string | null>(null);
 
@@ -66,8 +65,8 @@ export function TripDashboard() {
               />
             </div>
 
-            {/* métricas: 2 col mobile, 5 col desktop (saldo como 1ª no desktop) */}
-            <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
+            {/* métricas: 2 col mobile, 4 col desktop (saldo como 1ª no desktop) */}
+            <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
               <div className="hidden lg:block">
                 <MetricCard
                   hero
@@ -80,7 +79,6 @@ export function TripDashboard() {
               </div>
               <MetricCard label="Orçamento total" value={formatBRLShort(s.totalBudget)} Icon={Coins} tone="#43346A" />
               <MetricCard label="Gasto total" value={formatBRLShort(s.totalSpent)} Icon={Wallet} tone="#EF5244" />
-              <MetricCard label="Média por dia" value={formatBRLShort(s.dailyAverage)} Icon={TrendingUp} tone="#DF8E1E" />
               <MetricCard
                 label={s.status === 'upcoming' ? 'Dias p/ começar' : 'Dias restantes'}
                 value={s.status === 'past' ? '—' : s.daysRemaining}
@@ -111,7 +109,7 @@ export function TripDashboard() {
                       {s.spendingByCategory.map((c) => {
                         const pct = Math.round((c.amount / s.totalSpent) * 100);
                         const dim = activeSlice && activeSlice !== c.category;
-                        const Icon = CATEGORY_MAP[c.category].Icon;
+                        const Icon = categoryMap[c.category]?.Icon ?? Compass;
                         return (
                           <button
                             key={c.category}
@@ -121,7 +119,7 @@ export function TripDashboard() {
                           >
                             <span className="h-2.5 w-2.5 flex-shrink-0 rounded-[3px]" style={{ background: c.color }} />
                             <Icon size={15} color={c.color} className="flex-shrink-0" />
-                            <span className="flex-1 truncate text-left text-[13px] font-semibold text-ink-2">{c.category}</span>
+                            <span className="flex-1 truncate text-left text-[13px] font-semibold text-ink-2">{c.name}</span>
                             <span className="text-[13px] font-bold text-ink">{formatBRLShort(c.amount)}</span>
                             <span className="w-9 text-right text-xs font-bold text-faint">{pct}%</span>
                           </button>
@@ -132,14 +130,8 @@ export function TripDashboard() {
                 )}
               </Card>
 
-              {/* por dia */}
-              <Card className="p-[18px] lg:p-[22px]">
-                <div className="mb-2 flex items-center gap-1.5 text-sm font-extrabold tracking-tight text-ink-2">
-                  <Calendar size={16} className="text-primary" />
-                  Gastos por dia
-                </div>
-                <DailyBars data={s.spendingByDay} height={200} />
-              </Card>
+              {/* cotação de moedas */}
+              <CurrencyWidget />
             </div>
           </>
         )}

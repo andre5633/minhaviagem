@@ -1,0 +1,57 @@
+# ============================================================
+# Minha Viagem — nginx do HOST (novo servidor, domínio wildcard)
+# Um único server block atende o app e o admin:
+#   - SEUDOMINIO.com            → app
+#   - admin.SEUDOMINIO.com      → área administrativa (o app detecta o host)
+#   - qualquer *.SEUDOMINIO.com → app
+#
+# O container do frontend (porta WEB_PORT do host) já faz proxy de
+# /api /auth /health para o backend. Aqui só repassamos tudo pra ele.
+#
+# Passos:
+#   1) troque SEUDOMINIO.com e a porta 8080 (WEB_PORT do .env)
+#   2) ln -s para sites-enabled, nginx -t, systemctl reload nginx
+#   3) SSL wildcard: certbot --nginx -d 'SEUDOMINIO.com' -d '*.SEUDOMINIO.com'
+#      (wildcard exige desafio DNS-01 — ver DEPLOY.md)
+# ============================================================
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name SEUDOMINIO.com *.SEUDOMINIO.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name SEUDOMINIO.com *.SEUDOMINIO.com;
+
+    # SSL (certbot wildcard) — ajuste os caminhos conforme o certbot gerar
+    ssl_certificate     /etc/letsencrypt/live/SEUDOMINIO.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/SEUDOMINIO.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    client_max_body_size 12m; # capas de viagem em base64
+
+    location / {
+        proxy_pass http://localhost:8080;   # WEB_PORT do .env
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300;
+        proxy_connect_timeout 300;
+    }
+}

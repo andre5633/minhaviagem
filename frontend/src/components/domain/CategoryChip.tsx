@@ -1,17 +1,21 @@
-import { CATEGORY_MAP } from '../../lib/categories';
+import { Tag } from 'lucide-react';
 import { hexA } from '../../lib/cn';
-import type { CategoryKey } from '../../types';
+import { useApp } from '../../store/AppContext';
 
 interface CategoryChipProps {
-  category: CategoryKey;
+  /** chave da categoria (Category.key) */
+  category: string;
   selected?: boolean;
   onClick?: () => void;
   size?: 'sm' | 'md';
 }
 
 export function CategoryChip({ category, selected, onClick, size = 'md' }: CategoryChipProps) {
-  const def = CATEGORY_MAP[category];
-  const Icon = def.Icon;
+  const { categoryMap } = useApp();
+  const def = categoryMap[category];
+  const color = def?.color ?? '#8B8598';
+  const name = def?.name ?? category;
+  const Icon = def?.Icon ?? Tag;
   const sm = size === 'sm';
   return (
     <button
@@ -23,12 +27,12 @@ export function CategoryChip({ category, selected, onClick, size = 'md' }: Categ
       }
       style={
         selected
-          ? { background: def.color, borderColor: def.color, color: '#fff', boxShadow: `0 6px 14px ${hexA(def.color, 0.35)}` }
-          : { background: 'var(--mv-surface)', borderColor: 'var(--mv-border-2)', color: def.color }
+          ? { background: color, borderColor: color, color: '#fff', boxShadow: `0 6px 14px ${hexA(color, 0.35)}` }
+          : { background: 'var(--mv-surface)', borderColor: 'var(--mv-border-2)', color }
       }
     >
-      <Icon size={sm ? 13 : 16} color={selected ? '#fff' : def.color} />
-      {category}
+      <Icon size={sm ? 13 : 16} color={selected ? '#fff' : color} />
+      {name}
     </button>
   );
 }

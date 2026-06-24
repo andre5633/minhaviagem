@@ -13,9 +13,8 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { NoteIllustration } from '../components/ui/illustrations/NoteIllustration';
 import { Button } from '../components/ui/Button';
 import { FAB } from '../components/layout/FAB';
-import { CATEGORIES } from '../lib/categories';
 import { formatDayHeader, formatBRLShort } from '../lib/formatters';
-import type { CategoryKey, Expense } from '../types';
+import type { Expense } from '../types';
 
 interface DayGroup {
   date: string;
@@ -27,9 +26,9 @@ export function ExpenseList() {
   const { id } = useParams();
   const { trip, summary } = useTrip(id);
   const { expenses, deleteExpense } = useExpenses(id);
-  const { openExpenseSheet, toast } = useApp();
+  const { openExpenseSheet, toast, categories } = useApp();
 
-  const [filter, setFilter] = useState<CategoryKey | null>(null);
+  const [filter, setFilter] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -41,7 +40,10 @@ export function ExpenseList() {
     return () => clearTimeout(t);
   }, []);
 
-  const usedCats = useMemo(() => CATEGORIES.filter((c) => expenses.some((e) => e.category === c.key)), [expenses]);
+  const usedCats = useMemo(
+    () => categories.filter((c) => expenses.some((e) => e.category === c.key)),
+    [expenses, categories],
+  );
   const q = query.trim().toLowerCase();
   const anyFilter = Boolean(filter || q || dateFrom || dateTo);
 
