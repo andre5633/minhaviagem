@@ -109,6 +109,27 @@ const SORT_MAP: Record<string, string> = {
   lastCreate: '"lastCreate"',
 };
 
+// Colunas (inclui "lastCreate" = data do último trip/expense do usuário)
+const USER_SELECT = Prisma.sql`
+  u.id, u.name, u.email, u.created_at AS "createdAt", u.last_login_at AS "lastLoginAt",
+  GREATEST(
+    COALESCE((SELECT max(t.created_at) FROM trips t WHERE t.user_id = u.id), to_timestamp(0)),
+    COALESCE((SELECT max(e.created_at) FROM expenses e JOIN trips t ON t.id = e.trip_id WHERE t.user_id = u.id), to_timestamp(0))
+  ) AS "lastCreate"
+`;
+
+function mapRow(r: AdminUserRow) {
+  const lastCreate = r.lastCreate ? new Date(r.lastCreate) : null;
+  return {
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
+    lastLoginAt: r.lastLoginAt ? new Date(r.lastLoginAt).toISOString() : null,
+    lastCreate: lastCreate && lastCreate.getTime() > 0 ? lastCreate.toISOString() : null,
+  };
+}
+
 adminRouter.get('/users', requireAdmin, async (req, res) => {
   const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
   const pageSize = Math.min(100, Math.max(5, parseInt(String(req.query.pageSize ?? '20'), 10) || 20));
@@ -126,28 +147,45 @@ adminRouter.get('/users', requireAdmin, async (req, res) => {
   const total = totalRows[0]?.count ?? 0;
 
   const rows = await prisma.$queryRaw<AdminUserRow[]>(Prisma.sql`
-    SELECT u.id, u.name, u.email, u.created_at AS "createdAt", u.last_login_at AS "lastLoginAt",
-      GREATEST(
-        COALESCE((SELECT max(t.created_at) FROM trips t WHERE t.user_id = u.id), to_timestamp(0)),
-        COALESCE((SELECT max(e.created_at) FROM expenses e JOIN trips t ON t.id = e.trip_id WHERE t.user_id = u.id), to_timestamp(0))
-      ) AS "lastCreate"
+    SELECT ${USER_SELECT}
     FROM users u
     WHERE u.name ILIKE ${search} OR u.email ILIKE ${search}
     ORDER BY ${Prisma.raw(sortCol)} ${Prisma.raw(dir)} NULLS LAST
     LIMIT ${pageSize} OFFSET ${offset}
   `);
 
-  const data = rows.map((r) => {
-    const lastCreate = r.lastCreate ? new Date(r.lastCreate) : null;
-    return {
-      id: r.id,
-      name: r.name,
-      email: r.email,
-      createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : null,
-      lastLoginAt: r.lastLoginAt ? new Date(r.lastLoginAt).toISOString() : null,
-      lastCreate: lastCreate && lastCreate.getTime() > 0 ? lastCreate.toISOString() : null,
-    };
-  });
+  res.json({ data: rows.map(mapRow), total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) });
+});
 
-  res.json({ data, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) });
+// Exportação: todos do filtro (all=true&q=) ou por ids (ids=a,b,c)
+adminRouter.get('/users/export', requireAdmin, async (req, res) => {
+  const all = String(req.query.all) === 'true';
+  const q = String(req.query.q ?? '').trim();
+  const search = q ? `%${q}%` : '%';
+
+  let rows: AdminUserRow[];
+  if (all) {
+    rows = await prisma.$queryRaw<AdminUserRow[]>(Prisma.sql`
+      SELECT ${USER_SELECT}
+      FROM users u
+      WHERE u.name ILIKE ${search} OR u.email ILIKE ${search}
+      ORDER BY u.created_at DESC
+    `);
+  } else {
+    const ids = String(req.query.ids ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!ids.length) {
+      res.json([]);
+      return;
+    }
+    rows = await prisma.$queryRaw<AdminUserRow[]>(Prisma.sql`
+      SELECT ${USER_SELECT}
+      FROM users u
+      WHERE u.id IN (${Prisma.join(ids)})
+      ORDER BY u.created_at DESC
+    `);
+  }
+  res.json(rows.map(mapRow));
 });

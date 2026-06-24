@@ -8,6 +8,7 @@ import {
   Users,
   ChevronUp,
   ChevronDown,
+  Download,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { Card } from '../components/ui/Card';
@@ -55,6 +56,11 @@ export function AdminPage() {
   const [sort, setSort] = useState('createdAt');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
+  // seleção / exportação
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [allMatching, setAllMatching] = useState(false); // todos do filtro (todas as páginas)
+  const [exporting, setExporting] = useState(false);
+
   useEffect(() => {
     api
       .adminMe()
@@ -93,6 +99,11 @@ export function AdminPage() {
     }
   };
 
+  const clearSelection = () => {
+    setSelected(new Set());
+    setAllMatching(false);
+  };
+
   const logout = async () => {
     try {
       await api.adminLogout();
@@ -100,12 +111,69 @@ export function AdminPage() {
       /* ignora */
     }
     setResp(null);
+    clearSelection();
     setPhase('gate');
   };
 
   const applySearch = () => {
     setPage(1);
+    clearSelection(); // novo filtro → zera seleção
     setQ(qInput.trim());
+  };
+
+  // seleção
+  const pageIds = resp?.data.map((u) => u.id) ?? [];
+  const allCurrentSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const selectionCount = allMatching ? resp?.total ?? 0 : selected.size;
+
+  const toggleRow = (id: string) => {
+    setAllMatching(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleCurrentPage = () => {
+    if (allMatching) {
+      clearSelection();
+      return;
+    }
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allCurrentSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const doExport = async () => {
+    if (selectionCount === 0) return;
+    setExporting(true);
+    try {
+      const rows = allMatching
+        ? await api.adminUsersExport({ all: true, q })
+        : await api.adminUsersExport({ ids: [...selected] });
+      const XLSX = await import('xlsx');
+      const sheet = rows.map((u) => ({
+        Nome: u.name,
+        Email: u.email,
+        Cadastro: fmt(u.createdAt),
+        'Último lançamento': fmt(u.lastCreate),
+      }));
+      const ws = XLSX.utils.json_to_sheet(sheet);
+      ws['!cols'] = [{ wch: 28 }, { wch: 34 }, { wch: 18 }, { wch: 18 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Usuários');
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `usuarios-minhaviagem-${stamp}.xlsx`);
+    } catch {
+      /* noop */
+    } finally {
+      setExporting(false);
+    }
   };
 
   const toggleSort = (key: string) => {
@@ -211,7 +279,42 @@ export function AdminPage() {
           </select>
           <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-faint" />
         </div>
+        <Button
+          variant="primary"
+          size="md"
+          leftIcon={<Download size={18} />}
+          disabled={selectionCount === 0 || exporting}
+          loading={exporting}
+          onClick={doExport}
+        >
+          Exportar{selectionCount > 0 ? ` (${selectionCount})` : ''}
+        </Button>
       </div>
+
+      {/* banner de seleção entre páginas */}
+      {(resp?.totalPages ?? 1) > 1 && (allMatching || allCurrentSelected) && (
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-2 rounded-card border border-line bg-primary-soft px-4 py-2.5 text-center text-[13px] text-ink-2">
+          {allMatching ? (
+            <>
+              <span>
+                Todos os <strong>{resp?.total}</strong> usuários estão selecionados.
+              </span>
+              <button onClick={clearSelection} className="font-bold text-primary-dark hover:underline">
+                Limpar seleção
+              </button>
+            </>
+          ) : (
+            <>
+              <span>
+                Os <strong>{pageIds.length}</strong> desta página estão selecionados.
+              </span>
+              <button onClick={() => setAllMatching(true)} className="font-bold text-primary-dark hover:underline">
+                Selecionar todos os {resp?.total} (todas as páginas)
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* tabela */}
       <Card className="overflow-hidden p-0">
@@ -219,6 +322,16 @@ export function AdminPage() {
           <table className="w-full min-w-[720px] border-collapse text-left">
             <thead>
               <tr className="border-b border-line bg-surface-2">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allMatching || allCurrentSelected}
+                    onChange={toggleCurrentPage}
+                    style={{ accentColor: 'var(--mv-primary)' }}
+                    className="h-4 w-4 cursor-pointer align-middle"
+                    aria-label="Selecionar página"
+                  />
+                </th>
                 {COLUMNS.map((c) => (
                   <th key={c.key} className="px-4 py-3 text-[11.5px] font-bold uppercase tracking-wide text-faint">
                     {c.sortable ? (
@@ -237,13 +350,30 @@ export function AdminPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={COLUMNS.length} className="px-4 py-12 text-center">
+                  <td colSpan={COLUMNS.length + 1} className="px-4 py-12 text-center">
                     <Spinner size={26} />
                   </td>
                 </tr>
               ) : resp && resp.data.length > 0 ? (
                 resp.data.map((u: AdminUser) => (
-                  <tr key={u.id} className="border-b border-subtle transition last:border-0 hover:bg-surface-2">
+                  <tr
+                    key={u.id}
+                    className={cn(
+                      'border-b border-subtle transition last:border-0 hover:bg-surface-2',
+                      (allMatching || selected.has(u.id)) && 'bg-primary-soft',
+                    )}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={allMatching || selected.has(u.id)}
+                        disabled={allMatching}
+                        onChange={() => toggleRow(u.id)}
+                        style={{ accentColor: 'var(--mv-primary)' }}
+                        className="h-4 w-4 cursor-pointer align-middle disabled:opacity-60"
+                        aria-label={`Selecionar ${u.name}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-[14px] font-semibold text-ink">{u.name}</td>
                     <td className="px-4 py-3 text-[13.5px] text-ink-2">{u.email}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-[13px] text-muted">{fmt(u.createdAt)}</td>
@@ -252,7 +382,7 @@ export function AdminPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={COLUMNS.length} className="px-4 py-12 text-center text-sm text-faint">
+                  <td colSpan={COLUMNS.length + 1} className="px-4 py-12 text-center text-sm text-faint">
                     Nenhum usuário encontrado.
                   </td>
                 </tr>

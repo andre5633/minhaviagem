@@ -15,6 +15,7 @@ import type {
   GlobalChecklistItem,
   Category,
   CurrencyRate,
+  AdminUser,
   AdminUsersResponse,
 } from '../types';
 
@@ -119,5 +120,15 @@ export const api = {
       order: params.order,
     }).toString();
     return req<AdminUsersResponse>('GET', `/api/admin/users?${qs}`);
+  },
+  adminUsersExport: (params: { all?: boolean; q?: string; ids?: string[] }) => {
+    const qs = new URLSearchParams();
+    if (params.all) {
+      qs.set('all', 'true');
+      if (params.q) qs.set('q', params.q);
+    } else if (params.ids?.length) {
+      qs.set('ids', params.ids.join(','));
+    }
+    return req<AdminUser[]>('GET', `/api/admin/users/export?${qs.toString()}`);
   },
 };
