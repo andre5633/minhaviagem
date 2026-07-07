@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Home, Receipt, User, LogOut } from 'lucide-react';
+import { Home, Receipt, ListChecks, User, LogOut } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useApp } from '../../store/AppContext';
 import { Avatar } from '../ui/Avatar';
@@ -63,6 +63,13 @@ export function Sidebar() {
               sub
               active={path === `/trips/${id}/expenses`}
               onClick={() => navigate(`/trips/${id}/expenses`)}
+            />
+            <NavItem
+              Icon={ListChecks}
+              label="Checklist"
+              sub
+              active={path === `/trips/${id}/checklist`}
+              onClick={() => navigate(`/trips/${id}/checklist`)}
             />
           </div>
         )}

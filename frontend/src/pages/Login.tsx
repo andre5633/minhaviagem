@@ -31,11 +31,13 @@ export function Login() {
   };
 
   return (
-    <div className="relative grid h-full grid-rows-[auto_1fr] overflow-hidden bg-bg lg:grid-cols-[1.1fr_1fr] lg:grid-rows-1">
+    <div className="relative h-full overflow-y-auto bg-bg lg:grid lg:grid-cols-[1.1fr_1fr] lg:overflow-hidden">
       <ThemeToggle className="absolute right-4 top-4 z-40" />
 
+      {/* Mobile/tablet: coluna única centralizada. Desktop: 2 colunas (lg:contents joga arte+painel no grid do pai). */}
+      <div className="flex min-h-full flex-col items-center justify-center gap-6 px-6 py-14 lg:contents">
       {/* Arte — slideshow das fotos padrão */}
-      <div className="relative overflow-hidden max-lg:m-6 max-lg:mt-16 max-lg:h-[230px] max-lg:rounded-[28px]">
+      <div className="relative w-full max-w-sm overflow-hidden rounded-[28px] max-lg:h-[220px] lg:max-w-none lg:rounded-none">
         {/* fotos em cross-fade */}
         {SLIDES.map((src, i) => (
           <div
@@ -84,8 +86,8 @@ export function Login() {
       </div>
 
       {/* Painel */}
-      <div className="flex items-end justify-center px-7 pb-10 lg:items-center lg:bg-surface lg:p-10">
-        <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm lg:flex lg:max-w-none lg:items-center lg:justify-center lg:bg-surface lg:p-10">
+        <div className="w-full lg:max-w-sm">
           <div className="mv-brandlogo mb-5 h-20 w-[236px]" role="img" aria-label="Minha Viagem Organizada" />
           <h1 className="mb-1.5 text-[26px] font-extrabold leading-tight tracking-tight text-ink lg:text-3xl">
             Bem-vindo de volta
@@ -107,6 +109,7 @@ export function Login() {
             Ao continuar você concorda com os Termos de Uso e a Política de Privacidade.
           </p>
         </div>
+      </div>
       </div>
     </div>
   );
