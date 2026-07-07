@@ -1,5 +1,7 @@
-# Produção — PostgreSQL externo via DATABASE_URL, sem container de banco local
+# Produção — PostgreSQL EXTERNO via DATABASE_URL, sem container de banco local.
+# (Se NÃO tiver banco externo, use docker-compose.full.yml, que sobe o Postgres.)
 # Uso: docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+# O frontend publica em WEB_PORT (padrão 8080); o nginx do host faz proxy do domínio.
 
 services:
   backend:
@@ -25,6 +27,6 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${WEB_PORT:-8080}:80"
     depends_on:
       - backend
