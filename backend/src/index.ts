@@ -12,6 +12,7 @@ import { globalChecklistsRouter, globalItemsRouter } from './routes/globalCheckl
 import { categoriesRouter } from './routes/categories';
 import { ratesRouter } from './routes/rates';
 import { adminRouter } from './routes/admin';
+import { frontendUrl } from './lib/config';
 import './lib/passport'; // registra a estratégia Google
 
 const app = express();
@@ -20,7 +21,7 @@ app.set('trust proxy', true); // atrás do nginx — req.ip reflete o cliente (r
 app.use(helmet());
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: frontendUrl(),
     credentials: true,
   }),
 );

@@ -3,8 +3,12 @@ import passport from 'passport';
 import type { User } from '@prisma/client';
 import { signToken } from '../lib/jwt';
 import { requireAuth } from '../middleware/requireAuth';
+import { frontendUrl } from '../lib/config';
 
 export const authRouter = Router();
+
+// Normalizada no boot — sempre com esquema, sem barra final
+const FRONTEND_URL = frontendUrl();
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -24,13 +28,13 @@ authRouter.get(
   '/google/callback',
   passport.authenticate('google', {
     session: false,
-    failureRedirect: `${process.env.FRONTEND_URL}/login`,
+    failureRedirect: `${FRONTEND_URL}/login`,
   }),
   (req, res) => {
     const user = req.user as User;
     const token = signToken(user.id);
     res.cookie('mv_token', token, COOKIE_OPTS);
-    res.redirect(`${process.env.FRONTEND_URL}/trips`);
+    res.redirect(`${FRONTEND_URL}/trips`);
   },
 );
 
