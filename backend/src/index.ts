@@ -12,6 +12,7 @@ import { globalChecklistsRouter, globalItemsRouter } from './routes/globalCheckl
 import { categoriesRouter } from './routes/categories';
 import { ratesRouter } from './routes/rates';
 import { adminRouter } from './routes/admin';
+import { whatsappRouter } from './routes/whatsapp';
 import { frontendUrl } from './lib/config';
 import './lib/passport'; // registra a estratégia Google
 
@@ -25,7 +26,16 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: '10mb' })); // 10 mb para suportar coverImage em base64
+// rawBody é necessário para validar a assinatura HMAC do webhook do WhatsApp
+// (a Meta assina os bytes exatos do corpo; o JSON re-serializado não bate).
+app.use(
+  express.json({
+    limit: '10mb', // 10 mb para suportar coverImage em base64
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 app.use(cookieParser());
 app.use(passport.initialize());
 
@@ -41,6 +51,7 @@ app.use('/api/global-items', globalItemsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/rates', ratesRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/whatsapp', whatsappRouter);
 
 // Erro global
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

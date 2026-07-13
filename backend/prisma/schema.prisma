@@ -18,6 +18,10 @@ model User {
   trips     Trip[]
   globalChecklists GlobalChecklist[]
   categories Category[]
+  whatsappLink WhatsAppLink?
+  waMessages WaMessage[]
+  aiSettings AiSettings?
+  aiUsage    AiUsage[]
 
   @@map("users")
 }
@@ -143,4 +147,66 @@ model CurrencyRate {
   fetchedAt DateTime @map("fetched_at")
 
   @@map("currency_rates")
+}
+
+// Vínculo entre um número de WhatsApp e um usuário do app.
+// O pareamento é feito por CÓDIGO (o usuário envia o código no WhatsApp), não pelo
+// número digitado — o wa_id que a Meta entrega nem sempre bate com o número informado
+// (no Brasil ela costuma omitir o 9º dígito).
+model WhatsAppLink {
+  id            String    @id @default(uuid())
+  userId        String    @unique @map("user_id")
+  waId          String?   @unique @map("wa_id")
+  phone         String? // apenas informativo, o que o usuário digitou
+  code          String?
+  codeExpiresAt DateTime? @map("code_expires_at")
+  verifiedAt    DateTime? @map("verified_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+  @@map("whatsapp_links")
+}
+
+// Histórico da conversa no WhatsApp (só texto). waMessageId é único: a Meta reenvia
+// o mesmo evento quando não recebe 200 a tempo, e é isso que evita processar duas vezes.
+model WaMessage {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  waMessageId String?  @unique @map("wa_message_id")
+  role        String // 'user' | 'assistant'
+  text        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("wa_messages")
+}
+
+// Permissão e teto de uso do agente, por cliente (editável no painel admin).
+model AiSettings {
+  userId            String   @id @map("user_id")
+  enabled           Boolean  @default(true)
+  monthlyMessageCap Int?     @map("monthly_message_cap")
+  monthlyCostCapUsd Decimal? @map("monthly_cost_cap_usd") @db.Decimal(10, 2)
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_settings")
+}
+
+// Uma linha por resposta do agente — é a base do consumo/custo por cliente no admin.
+model AiUsage {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  model           String
+  inputTokens     Int      @map("input_tokens")
+  outputTokens    Int      @map("output_tokens")
+  cacheReadTokens Int      @default(0) @map("cache_read_tokens")
+  costUsd         Decimal  @map("cost_usd") @db.Decimal(12, 6)
+  createdAt       DateTime @default(now()) @map("created_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("ai_usage")
 }

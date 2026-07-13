@@ -189,3 +189,137 @@ adminRouter.get('/users/export', requireAdmin, async (req, res) => {
   }
   res.json(rows.map(mapRow));
 });
+
+// ==================================== IA / WhatsApp: consumo e limite por cliente
+
+const DEFAULT_MESSAGE_CAP = Number(process.env.AI_DEFAULT_MONTHLY_MESSAGE_CAP ?? 300);
+const DEFAULT_COST_CAP_USD = Number(process.env.AI_DEFAULT_MONTHLY_COST_CAP_USD ?? 10);
+
+function startOfMonth(): Date {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+interface AiRow {
+  id: string;
+  name: string;
+  email: string;
+  waConnected: boolean;
+  enabled: boolean | null;
+  monthlyMessageCap: number | null;
+  monthlyCostCapUsd: string | null;
+  monthMessages: number;
+  monthCostUsd: string | null;
+  totalMessages: number;
+  totalCostUsd: string | null;
+  lastUsedAt: Date | null;
+}
+
+// Uma linha por usuário: se está conectado no WhatsApp, se o agente está ligado,
+// os tetos, e o consumo (mês corrente e acumulado).
+adminRouter.get('/ai', requireAdmin, async (req, res) => {
+  const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10) || 1);
+  const pageSize = Math.min(100, Math.max(5, parseInt(String(req.query.pageSize ?? '20'), 10) || 20));
+  const q = String(req.query.q ?? '').trim();
+  const search = q ? `%${q}%` : '%';
+  const offset = (page - 1) * pageSize;
+  const since = startOfMonth();
+
+  const totalRows = await prisma.$queryRaw<{ count: number }[]>(Prisma.sql`
+    SELECT count(*)::int AS count FROM users u
+    WHERE u.name ILIKE ${search} OR u.email ILIKE ${search}
+  `);
+  const total = totalRows[0]?.count ?? 0;
+
+  const rows = await prisma.$queryRaw<AiRow[]>(Prisma.sql`
+    SELECT
+      u.id, u.name, u.email,
+      (w.verified_at IS NOT NULL) AS "waConnected",
+      s.enabled AS "enabled",
+      s.monthly_message_cap AS "monthlyMessageCap",
+      s.monthly_cost_cap_usd::text AS "monthlyCostCapUsd",
+      COALESCE(m.msgs, 0)::int AS "monthMessages",
+      COALESCE(m.cost, 0)::text AS "monthCostUsd",
+      COALESCE(a.msgs, 0)::int AS "totalMessages",
+      COALESCE(a.cost, 0)::text AS "totalCostUsd",
+      a.last_used AS "lastUsedAt"
+    FROM users u
+    LEFT JOIN whatsapp_links w ON w.user_id = u.id
+    LEFT JOIN ai_settings   s ON s.user_id = u.id
+    LEFT JOIN (
+      SELECT user_id, count(*) AS msgs, sum(cost_usd) AS cost
+      FROM ai_usage WHERE created_at >= ${since} GROUP BY user_id
+    ) m ON m.user_id = u.id
+    LEFT JOIN (
+      SELECT user_id, count(*) AS msgs, sum(cost_usd) AS cost, max(created_at) AS last_used
+      FROM ai_usage GROUP BY user_id
+    ) a ON a.user_id = u.id
+    WHERE u.name ILIKE ${search} OR u.email ILIKE ${search}
+    ORDER BY "monthCostUsd"::numeric DESC, u.created_at DESC
+    LIMIT ${pageSize} OFFSET ${offset}
+  `);
+
+  res.json({
+    defaults: { monthlyMessageCap: DEFAULT_MESSAGE_CAP, monthlyCostCapUsd: DEFAULT_COST_CAP_USD },
+    data: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      waConnected: r.waConnected,
+      // null = usa o padrão do sistema
+      enabled: r.enabled,
+      monthlyMessageCap: r.monthlyMessageCap,
+      monthlyCostCapUsd: r.monthlyCostCapUsd === null ? null : Number(r.monthlyCostCapUsd),
+      monthMessages: r.monthMessages,
+      monthCostUsd: Number(r.monthCostUsd ?? 0),
+      totalMessages: r.totalMessages,
+      totalCostUsd: Number(r.totalCostUsd ?? 0),
+      lastUsedAt: r.lastUsedAt ? new Date(r.lastUsedAt).toISOString() : null,
+    })),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  });
+});
+
+// Liga/desliga o agente e define os tetos de um cliente. Campo ausente = não mexe;
+// campo null = volta a usar o padrão do sistema.
+adminRouter.put('/ai/:userId', requireAdmin, async (req, res) => {
+  const { userId } = req.params;
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    res.status(404).json({ error: 'Usuário não encontrado' });
+    return;
+  }
+
+  const { enabled, monthlyMessageCap, monthlyCostCapUsd } = req.body ?? {};
+
+  const data: Prisma.AiSettingsUncheckedUpdateInput = {};
+  if (typeof enabled === 'boolean') data.enabled = enabled;
+  if (monthlyMessageCap === null || typeof monthlyMessageCap === 'number') {
+    data.monthlyMessageCap = monthlyMessageCap === null ? null : Math.max(0, Math.trunc(monthlyMessageCap));
+  }
+  if (monthlyCostCapUsd === null || typeof monthlyCostCapUsd === 'number') {
+    data.monthlyCostCapUsd =
+      monthlyCostCapUsd === null ? null : new Prisma.Decimal(Math.max(0, monthlyCostCapUsd).toFixed(2));
+  }
+
+  const saved = await prisma.aiSettings.upsert({
+    where: { userId },
+    create: {
+      userId,
+      enabled: typeof data.enabled === 'boolean' ? data.enabled : true,
+      monthlyMessageCap: (data.monthlyMessageCap as number | null | undefined) ?? null,
+      monthlyCostCapUsd: (data.monthlyCostCapUsd as Prisma.Decimal | null | undefined) ?? null,
+    },
+    update: data,
+  });
+
+  res.json({
+    id: userId,
+    enabled: saved.enabled,
+    monthlyMessageCap: saved.monthlyMessageCap,
+    monthlyCostCapUsd: saved.monthlyCostCapUsd === null ? null : Number(saved.monthlyCostCapUsd),
+  });
+});

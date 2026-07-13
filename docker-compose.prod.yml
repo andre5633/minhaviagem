@@ -17,6 +17,15 @@ services:
       FRONTEND_URL:         ${FRONTEND_URL}
       AWESOMEAPI_TOKEN:     ${AWESOMEAPI_TOKEN:-}
       ADMIN_PASSWORD:       ${ADMIN_PASSWORD:-}
+      # Assistente no WhatsApp (opcional — sem isto o app roda sem o agente)
+      WHATSAPP_VERIFY_TOKEN:    ${WHATSAPP_VERIFY_TOKEN:-}
+      WHATSAPP_APP_SECRET:      ${WHATSAPP_APP_SECRET:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_TOKEN:           ${WHATSAPP_TOKEN:-}
+      WHATSAPP_DISPLAY_NUMBER:  ${WHATSAPP_DISPLAY_NUMBER:-}
+      ANTHROPIC_API_KEY:        ${ANTHROPIC_API_KEY:-}
+      AI_DEFAULT_MONTHLY_MESSAGE_CAP:  ${AI_DEFAULT_MONTHLY_MESSAGE_CAP:-300}
+      AI_DEFAULT_MONTHLY_COST_CAP_USD: ${AI_DEFAULT_MONTHLY_COST_CAP_USD:-10}
       PORT:                 4000
       NODE_ENV:             production
     # Porta 4000 não exposta externamente — tráfego passa pelo nginx do frontend

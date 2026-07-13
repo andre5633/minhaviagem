@@ -17,6 +17,8 @@ import type {
   CurrencyRate,
   AdminUser,
   AdminUsersResponse,
+  AdminAiResponse,
+  WhatsAppLink,
 } from '../types';
 
 export class ApiError extends Error {
@@ -107,6 +109,12 @@ export const api = {
   // ── cotações ──
   getRates: () => req<CurrencyRate[]>('GET', '/api/rates'),
 
+  // ── WhatsApp (Perfil > WhatsApp) ──
+  getWhatsAppLink: () => req<WhatsAppLink>('GET', '/api/whatsapp/link'),
+  createWhatsAppCode: (phone?: string) =>
+    req<{ code: string; codeExpiresAt: string; displayNumber: string }>('POST', '/api/whatsapp/link', { phone }),
+  unlinkWhatsApp: () => req<{ ok: boolean }>('DELETE', '/api/whatsapp/link'),
+
   // ── admin ──
   adminLogin: (password: string) => req<{ ok: boolean }>('POST', '/api/admin/login', { password }),
   adminMe: () => req<{ ok: boolean }>('GET', '/api/admin/me'),
@@ -131,4 +139,22 @@ export const api = {
     }
     return req<AdminUser[]>('GET', `/api/admin/users/export?${qs.toString()}`);
   },
+
+  // ── admin > IA/WhatsApp ──
+  adminAi: (params: { page: number; pageSize: number; q: string }) => {
+    const qs = new URLSearchParams({
+      page: String(params.page),
+      pageSize: String(params.pageSize),
+      q: params.q,
+    }).toString();
+    return req<AdminAiResponse>('GET', `/api/admin/ai?${qs}`);
+  },
+  adminAiUpdate: (
+    userId: string,
+    data: { enabled?: boolean; monthlyMessageCap?: number | null; monthlyCostCapUsd?: number | null },
+  ) => req<{ id: string; enabled: boolean; monthlyMessageCap: number | null; monthlyCostCapUsd: number | null }>(
+    'PUT',
+    `/api/admin/ai/${userId}`,
+    data,
+  ),
 };

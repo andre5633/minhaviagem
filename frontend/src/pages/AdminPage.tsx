@@ -9,16 +9,19 @@ import {
   ChevronUp,
   ChevronDown,
   Download,
+  Bot,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Spinner } from '../components/ui/Spinner';
 import { ThemeToggle } from '../components/layout/ThemeToggle';
+import { AdminAiPanel } from '../components/domain/AdminAiPanel';
 import { cn } from '../lib/cn';
 import type { AdminUser, AdminUsersResponse } from '../types';
 
 type Phase = 'loading' | 'gate' | 'authed';
+type View = 'users' | 'ai';
 
 function fmt(iso: string | null): string {
   if (!iso) return '—';
@@ -40,6 +43,7 @@ const COLUMNS: { key: string; label: string; sortable: boolean }[] = [
 
 export function AdminPage() {
   const [phase, setPhase] = useState<Phase>('loading');
+  const [view, setView] = useState<View>('users');
 
   // gate
   const [password, setPassword] = useState('');
@@ -232,11 +236,15 @@ export function AdminPage() {
       <header className="mb-6 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft">
-            <Users className="text-primary" size={20} />
+            {view === 'ai' ? <Bot className="text-primary" size={20} /> : <Users className="text-primary" size={20} />}
           </span>
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-ink">Usuários</h1>
-            <div className="text-[12.5px] text-faint">{resp ? `${resp.total} cadastrados` : '—'}</div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-ink">
+              {view === 'ai' ? 'IA / WhatsApp' : 'Usuários'}
+            </h1>
+            <div className="text-[12.5px] text-faint">
+              {view === 'ai' ? 'consumo e limite por cliente' : resp ? `${resp.total} cadastrados` : '—'}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -247,6 +255,32 @@ export function AdminPage() {
         </div>
       </header>
 
+      {/* abas */}
+      <div className="mb-5 flex items-center gap-1 border-b border-line">
+        {(
+          [
+            { key: 'users', Icon: Users, label: 'Usuários' },
+            { key: 'ai', Icon: Bot, label: 'IA / WhatsApp' },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setView(t.key)}
+            className={cn(
+              '-mb-px inline-flex items-center gap-1.5 border-b-[2.5px] px-3.5 pb-3 pt-1.5 text-[14.5px] font-bold transition',
+              view === t.key ? 'border-primary text-primary-dark' : 'border-transparent text-faint hover:text-ink-3',
+            )}
+          >
+            <t.Icon size={17} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'ai' ? (
+        <AdminAiPanel />
+      ) : (
+        <>
       {/* filtros */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="mv-input flex flex-1 items-center gap-2 !py-0">
@@ -418,6 +452,8 @@ export function AdminPage() {
           </Button>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

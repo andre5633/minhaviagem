@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Wallet, Info, LogOut, User as UserIcon, ListChecks, Tags } from 'lucide-react';
+import { Wallet, Info, LogOut, User as UserIcon, ListChecks, Tags, MessageCircle } from 'lucide-react';
 import { useApp } from '../store/AppContext';
 import { Avatar } from '../components/ui/Avatar';
 import { Card } from '../components/ui/Card';
@@ -8,9 +8,10 @@ import { GoogleIcon } from '../components/ui/GoogleIcon';
 import { ThemeToggle } from '../components/layout/ThemeToggle';
 import { GlobalChecklistEditor } from '../components/domain/GlobalChecklistEditor';
 import { CategoryEditor } from '../components/domain/CategoryEditor';
+import { WhatsAppLinker } from '../components/domain/WhatsAppLinker';
 import { cn } from '../lib/cn';
 
-type Tab = 'perfil' | 'checklist' | 'categorias';
+type Tab = 'perfil' | 'checklist' | 'categorias' | 'whatsapp';
 
 export function Profile() {
   const { user, logout } = useApp();
@@ -20,7 +21,7 @@ export function Profile() {
     <div
       className={cn(
         'mx-auto px-5 pb-28 pt-12 lg:px-10 lg:pb-12 lg:pt-8',
-        tab === 'perfil' ? 'max-w-[680px]' : 'max-w-[1080px]',
+        tab === 'perfil' || tab === 'whatsapp' ? 'max-w-[680px]' : 'max-w-[1080px]',
       )}
     >
       <header className="mb-5 flex items-center justify-between">
@@ -29,10 +30,11 @@ export function Profile() {
       </header>
 
       {/* Abas */}
-      <div className="mb-5 flex items-center gap-1 border-b border-line">
+      <div className="mb-5 flex items-center gap-1 overflow-x-auto border-b border-line">
         <TabBtn active={tab === 'perfil'} Icon={UserIcon} label="Perfil" onClick={() => setTab('perfil')} />
         <TabBtn active={tab === 'checklist'} Icon={ListChecks} label="Meu Checklist" onClick={() => setTab('checklist')} />
         <TabBtn active={tab === 'categorias'} Icon={Tags} label="Minhas Categorias" onClick={() => setTab('categorias')} />
+        <TabBtn active={tab === 'whatsapp'} Icon={MessageCircle} label="WhatsApp" onClick={() => setTab('whatsapp')} />
       </div>
 
       {tab === 'perfil' ? (
@@ -83,8 +85,10 @@ export function Profile() {
         </>
       ) : tab === 'checklist' ? (
         <GlobalChecklistEditor />
-      ) : (
+      ) : tab === 'categorias' ? (
         <CategoryEditor />
+      ) : (
+        <WhatsAppLinker />
       )}
     </div>
   );

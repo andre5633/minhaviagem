@@ -66,6 +66,43 @@ export interface AdminUsersResponse {
   totalPages: number;
 }
 
+// Admin — uso do agente de IA / WhatsApp por cliente.
+// enabled / caps em null = o cliente segue o padrão do sistema.
+export interface AdminAiUser {
+  id: string;
+  name: string;
+  email: string;
+  waConnected: boolean;
+  enabled: boolean | null;
+  monthlyMessageCap: number | null;
+  monthlyCostCapUsd: number | null;
+  monthMessages: number;
+  monthCostUsd: number;
+  totalMessages: number;
+  totalCostUsd: number;
+  lastUsedAt: string | null;
+}
+export interface AdminAiResponse {
+  defaults: { monthlyMessageCap: number; monthlyCostCapUsd: number };
+  data: AdminAiUser[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// Perfil > WhatsApp — estado do vínculo do usuário
+export interface WhatsAppLink {
+  /** false quando o servidor está sem as chaves da Meta/Anthropic */
+  configured: boolean;
+  displayNumber: string;
+  connected: boolean;
+  phone: string | null;
+  verifiedAt: string | null;
+  code: string | null;
+  codeExpiresAt: string | null;
+}
+
 // Cotação de moeda (vs BRL)
 export interface CurrencyRate {
   code: string;
